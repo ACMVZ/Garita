@@ -47,6 +47,12 @@ buzzer = PWM(Pin(BUZZER_PIN))
 buzzer.deinit()
 pot = ADC(Pin(POT_PIN))
 
+def buzzer_on(freq = 1000):
+    buzzer.init()
+    buzzer.freq(freq)
+    buzzer.duty_u16(32768) # 1/2
+
+
 # S Ultrasónico HC-SR0$ =============
 #setup
 trig = Pin(TRIG_PIN, Pin.OUT)
@@ -74,14 +80,11 @@ def hay_presencia():
     return False
 
 # RC522 RFID ===============
-#reader = MFRC522(RC522_SCK_PIN, RC522_MOSI_PIN, RC522_MISO_PIN, RC522_RST_PIN, RC522_SDA_PIN)  # last '0' = SPI bus 0
+reader = MFRC522(RC522_SCK_PIN, RC522_MOSI_PIN, RC522_MISO_PIN, RC522_RST_PIN, RC522_SDA_PIN)  # last '0' = SPI bus 0
 
-#spi = SPI(0, baudrate=1000000, polarity=0, phase=0,
- #         sck=Pin(RC522_SCK_PIN), mosi=Pin(RC522_MOSI_PIN), miso=Pin(RC522_MISO_PIN))
-spi = SPI(1, baudrate=1000000, polarity=0, phase=0,
-          sck=Pin(RC522_SCK_PIN), mosi=Pin(RC522_MOSI_PIN), miso=Pin(RC522_MISO_PIN))
+spi = SPI(0, baudrate=1000000, polarity=0, phase=0,
+         sck=Pin(RC522_SCK_PIN), mosi=Pin(RC522_MOSI_PIN), miso=Pin(RC522_MISO_PIN))
 reader = MFRC522(spi=spi, cs=Pin(RC522_SDA_PIN), rst=Pin(RC522_RST_PIN))
-
 
 # IDs Autorizadas
 ids_verificadas = [
@@ -107,7 +110,7 @@ def abrir_puerta():
                 buzzer_on(2000)
                 sleep(0.5)
             else: 
-                buzzer_off()
+                buzzer.deinit()
                 break
     sleep(2)
 
@@ -115,12 +118,15 @@ def es_id_autorizado(uid):
     return uid in ids_verificadas
 
 def leer_tarjeta():
-    (stat, tag_type) = reader.request(reader.REQIDL)
-    if stat == reader.OK:
-        (stat, raw_uid) = reader.anticoll()
+    try:
+        (stat, tag_type) = reader.request(reader.REQIDL)
         if stat == reader.OK:
-            uid_str = " ".join("{:02X}".format(x) for x in raw_uid)
-            return uid_str
+            (stat, raw_uid) = reader.anticoll()
+            if stat == reader.OK:
+                uid_str = " ".join("{:02X}".format(x) for x in raw_uid)
+                return uid_str
+    except Exception as e:
+        print("Error RFID", e) 
     return None
 
 # Setup Servo
@@ -157,7 +163,7 @@ def loop_Puerta():
 
 # Hilo Sensores varios
 def loop_sensores():
-        
+    while True:
         sleep(5)  # alivio de CPU
 
 _thread.start_new_thread(loop_sensores, ())
