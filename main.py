@@ -1,4 +1,4 @@
-from machine import Pin, PWN, SPI
+from machine import Pin, PWN, SPI, ADC
 from time import sleep, ticks_ms, time_pulse_us
 from mfrc522 import MFRC522
 import _thread
@@ -11,10 +11,14 @@ RC522_SDA_PIN = 20
 RC522_RST_PIN = 27
 
 SERVO_PIN = 15
+
 BOTON_PIN = 14
 
 TRIG_PIN = 8
 ECHO_PIN = 9
+
+BUZZER_PIN = 10
+POT_PIN = 28
 
 # Servo PWN ===============
 servo = PWM(Pin(SERVO_PIN))
@@ -30,9 +34,13 @@ button = Pin(BOTON_PIN, Pin.IN, Pin.PULL_UP)
 last_button_time = 0
 debounce_delay = 200  # ms
 
+# BUzzer '/ Potenciómetro
+buzzer = PWN(Pin(BUZZER_PIN))
+buzzer.deinit()
+pot = ADC(Pin(POT_PIN))
+
 # S Ultrasónico HC-SR0$ =============
 #setup
-
 trig = Pin(TRIG_PIN, Pin.OUT)
 echo = Pin(ECHO_PIN, Pin.IN)
 distancia_actual = 999  # (v inicial)
@@ -83,9 +91,11 @@ def abrir_puerta():
         sleep(0.015)
         while True:
             if hay_presencia():
-                #Buzzer
-                sleep(1)
-            else: break
+                buzzer_on(2000)
+                sleep(0.5)
+            else: 
+                buzzer_off()
+                break
     sleep(2)
 
 def es_id_autorizado(uid):
