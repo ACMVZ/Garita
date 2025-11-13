@@ -16,7 +16,7 @@ BOTON_PIN = 14
 TRIG_PIN = 8
 ECHO_PIN = 9
 
-# Servo PWN
+# Servo PWN ===============
 servo = PWM(Pin(SERVO_PIN))
 servo.freq(50)
 
@@ -25,12 +25,39 @@ def set_angle(angle):
     duty = int(((angle / 180) * 5000) + 2500)
     servo.duty_u16(duty)
 
-# Botón
+# Botón ==================
 button = Pin(BOTON_PIN, Pin.IN, Pin.PULL_UP)
 last_button_time = 0
 debounce_delay = 200  # ms
 
-# RC522 RFID
+# S Ultrasónico HC-SR0$ =============
+#setup
+
+trig = Pin(TRIG_PIN, Pin.OUT)
+echo = Pin(ECHO_PIN, Pin.IN)
+distancia_actual = 999  # (v inicial)
+presencia_detectada = False
+
+def medir_distancia_cm():
+    trig.low()
+    sleep(0.002)
+    trig.high()
+    sleep(0.00001)
+    trig.low()
+    try:
+        duracion = time_pulse_us(echo, 1, 30000)  # timeout de 30ms
+        distancia = (duracion / 2) / 29.1  # cm
+        return distancia
+    except OSError:
+        return None
+    
+def hay_presencia():
+    dist = medir_distancia_cm()
+    if dist is not None and dist < 20:
+        return True
+    return False
+
+# RC522 RFID ===============
 spi = SPI(0, baudrate=1000000, polarity=0, phase=0,
           sck=Pin(RC522_SCK_PIN), mosi=Pin(RC522_MOSI_PIN), miso=Pin(RC522_MISO_PIN))
 reader = MFRC522(spi=spi, sda=Pin(RC522_SDA_PIN), rst=Pin(RC522_RST_PIN))
@@ -54,6 +81,11 @@ def abrir_puerta():
     for pos in range(90, -1, -1):
         set_angle(pos)
         sleep(0.015)
+        while True:
+            if hay_presencia():
+                #Buzzer
+                sleep(1)
+            else: break
     sleep(2)
 
 def es_id_autorizado(uid):
