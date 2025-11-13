@@ -1,14 +1,22 @@
-from machine import Pin, PWN, SPI, ADC
-from time import sleep, ticks_ms, time_pulse_us
+import machine
+from machine import Pin, PWM, SPI, ADC
+from time import sleep, ticks_ms, sleep_ms, sleep_us
 from mfrc522 import MFRC522
 import _thread
 
 # PINES
-RC522_SCK_PIN = 21
-RC522_MOSI_PIN = 22
-RC522_MISO_PIN = 26
-RC522_SDA_PIN = 20
-RC522_RST_PIN = 27
+RC522_SCK_PIN = 2
+RC522_MOSI_PIN = 3
+RC522_MISO_PIN = 4
+RC522_SDA_PIN = 1
+RC522_RST_PIN = 0
+
+# SPI PINES
+SCK = Pin(RC522_SCK_PIN)
+MOSI = Pin(RC522_MOSI_PIN)
+MISO = Pin(RC522_MISO_PIN)
+RST = Pin(RC522_RST_PIN)
+SDA = Pin(RC522_SDA_PIN)
 
 SERVO_PIN = 15
 
@@ -35,7 +43,7 @@ last_button_time = 0
 debounce_delay = 200  # ms
 
 # BUzzer '/ Potenciómetro
-buzzer = PWN(Pin(BUZZER_PIN))
+buzzer = PWM(Pin(BUZZER_PIN))
 buzzer.deinit()
 pot = ADC(Pin(POT_PIN))
 
@@ -53,7 +61,7 @@ def medir_distancia_cm():
     sleep(0.00001)
     trig.low()
     try:
-        duracion = time_pulse_us(echo, 1, 30000)  # timeout de 30ms
+        duracion = machine.time_pulse_us(echo, 1, 30000)  # timeout de 30ms
         distancia = (duracion / 2) / 29.1  # cm
         return distancia
     except OSError:
@@ -66,9 +74,14 @@ def hay_presencia():
     return False
 
 # RC522 RFID ===============
-spi = SPI(0, baudrate=1000000, polarity=0, phase=0,
+#reader = MFRC522(RC522_SCK_PIN, RC522_MOSI_PIN, RC522_MISO_PIN, RC522_RST_PIN, RC522_SDA_PIN)  # last '0' = SPI bus 0
+
+#spi = SPI(0, baudrate=1000000, polarity=0, phase=0,
+ #         sck=Pin(RC522_SCK_PIN), mosi=Pin(RC522_MOSI_PIN), miso=Pin(RC522_MISO_PIN))
+spi = SPI(1, baudrate=1000000, polarity=0, phase=0,
           sck=Pin(RC522_SCK_PIN), mosi=Pin(RC522_MOSI_PIN), miso=Pin(RC522_MISO_PIN))
-reader = MFRC522(spi=spi, sda=Pin(RC522_SDA_PIN), rst=Pin(RC522_RST_PIN))
+reader = MFRC522(spi=spi, cs=Pin(RC522_SDA_PIN), rst=Pin(RC522_RST_PIN))
+
 
 # IDs Autorizadas
 ids_verificadas = [
