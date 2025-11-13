@@ -44,14 +44,15 @@ debounce_delay = 200  # ms
 
 # BUzzer '/ Potenciómetro
 buzzer = PWM(Pin(BUZZER_PIN))
-buzzer.deinit()
+buzzer.duty_u16(0) #inicio apagado
 pot = ADC(Pin(POT_PIN))
 
 def buzzer_on(freq = 1000):
-    buzzer.init()
     buzzer.freq(freq)
     buzzer.duty_u16(32768) # 1/2
 
+def buzzer_off():
+    buzzer.duty_u16(0)
 
 # S Ultrasónico HC-SR0$ =============
 #setup
@@ -80,15 +81,26 @@ def hay_presencia():
     return False
 
 # RC522 RFID ===============
-reader = MFRC522(RC522_SCK_PIN, RC522_MOSI_PIN, RC522_MISO_PIN, RC522_RST_PIN, RC522_SDA_PIN)  # last '0' = SPI bus 0
+reader = MFRC522(spi_id=0,sck=2,miso=4,mosi=3,cs=1,rst=0)
+#reader = MFRC522(
+#     RC522_SCK_PIN,
+#     RC522_MOSI_PIN,
+#     RC522_MISO_PIN,
+#     RC522_RST_PIN,
+#     RC522_SDA_PIN)
 
-spi = SPI(0, baudrate=1000000, polarity=0, phase=0,
-         sck=Pin(RC522_SCK_PIN), mosi=Pin(RC522_MOSI_PIN), miso=Pin(RC522_MISO_PIN))
-reader = MFRC522(spi=spi, cs=Pin(RC522_SDA_PIN), rst=Pin(RC522_RST_PIN))
+#reader = MFRC522(
+#    spi_id=0,
+#    sck=RC522_SCK_PIN,
+#    mosi=RC522_MOSI_PIN,
+#    miso=RC522_MISO_PIN,
+#    rst=RC522_RST_PIN,
+#    cs=RC522_SDA_PIN
+
 
 # IDs Autorizadas
 ids_verificadas = [
-    "BD 31 15 2B",
+    "[0xD9, 0x9C, 0xCD, 0x05]",
     "A3 4F 22 19",
     "91 0A 7C 3E",
     "D9 9C CD 05"
@@ -108,9 +120,11 @@ def abrir_puerta():
         while True:
             if hay_presencia():
                 buzzer_on(2000)
-                sleep(0.5)
+                sleep(0.15)
+                buzzer_off()
+                sleep(0.1)
             else: 
-                buzzer.deinit()
+                buzzer_off()
                 break
     sleep(2)
 
@@ -119,11 +133,13 @@ def es_id_autorizado(uid):
 
 def leer_tarjeta():
     try:
+        reader.init()
+        
         (stat, tag_type) = reader.request(reader.REQIDL)
         if stat == reader.OK:
-            (stat, raw_uid) = reader.anticoll()
-            if stat == reader.OK:
-                uid_str = " ".join("{:02X}".format(x) for x in raw_uid)
+            (stat, uid) = reader.SelectTagSN()
+            if stat == reader.OK and uid:
+                uid_str = reader.tohexstring(uid)
                 return uid_str
     except Exception as e:
         print("Error RFID", e) 
@@ -168,3 +184,4 @@ def loop_sensores():
 
 _thread.start_new_thread(loop_sensores, ())
 loop_Puerta()
+
